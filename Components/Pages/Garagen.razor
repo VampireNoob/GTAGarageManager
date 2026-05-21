@@ -135,11 +135,15 @@
     private bool neueGarageOffen = false;
     private DotNetObjectReference<Garagen>? dotnetRef;
 
+    protected override async Task OnInitializedAsync()
+    {
+        await GarageService.LadeAlleGaragen();
+    }
+
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         dotnetRef = DotNetObjectReference.Create(this);
         await JSRuntime.InvokeVoidAsync("initSortable", dotnetRef);
-
         for (int i = 0; i < GarageService.Garagen.Count; i++)
             await JSRuntime.InvokeVoidAsync("initFahrzeugSortable", dotnetRef, i);
     }
@@ -147,7 +151,7 @@
     [JSInvokable]
     public async Task OnReorder(int oldIndex, int newIndex)
     {
-        GarageService.GarageVerschieben(oldIndex, newIndex);
+        await GarageService.GarageVerschieben(oldIndex, newIndex);
         StateHasChanged();
         await JSRuntime.InvokeVoidAsync("initSortable", dotnetRef);
     }
@@ -156,7 +160,7 @@
     public async Task OnFahrzeugReorder(int garageIndex, int oldIndex, int newIndex)
     {
         var garage = GarageService.Garagen[garageIndex];
-        GarageService.FahrzeugVerschieben(garage, oldIndex, newIndex);
+        await GarageService.FahrzeugVerschieben(garage, oldIndex, newIndex);
         StateHasChanged();
         await JSRuntime.InvokeVoidAsync("initFahrzeugSortable", dotnetRef, garageIndex);
     }
@@ -170,38 +174,37 @@
 
     private void BearbeitenSchliessen() => bearbeitenGarage = null;
 
-    private void BearbeitenSpeichern()
+    private async Task BearbeitenSpeichern()
     {
         if (bearbeitenGarage != null)
         {
-            GarageService.GarageUmbenennen(bearbeitenGarage, editGarageName);
-            GarageService.Speichern();
+            await GarageService.GarageUmbenennen(bearbeitenGarage, editGarageName);
+            await GarageService.Speichern();
         }
         bearbeitenGarage = null;
     }
 
-    private void GarageLoeschenClick()
+    private async Task GarageLoeschenClick()
     {
         if (bearbeitenGarage != null)
         {
-            GarageService.GarageLoeschen(bearbeitenGarage);
+            await GarageService.GarageLoeschen(bearbeitenGarage);
             bearbeitenGarage = null;
         }
     }
 
-    private void FahrzeugHinzufuegenClick()
+    private async Task FahrzeugHinzufuegenClick()
     {
         if (bearbeitenGarage != null && !string.IsNullOrWhiteSpace(neuesFahrzeug))
         {
-            GarageService.FahrzeugHinzufuegen(bearbeitenGarage, neuesFahrzeug);
+            await GarageService.FahrzeugHinzufuegen(bearbeitenGarage, neuesFahrzeug);
             neuesFahrzeug = "";
         }
     }
 
-    private void FahrzeugLoeschenClick(Fahrzeug fahrzeug)
+    private async Task FahrzeugLoeschenClick(Fahrzeug fahrzeug)
     {
-        if (bearbeitenGarage != null)
-            GarageService.FahrzeugLoeschen(bearbeitenGarage, fahrzeug);
+        await GarageService.FahrzeugLoeschen(fahrzeug);
     }
 
     private async Task FotoHochladen(InputFileChangeEventArgs e)
@@ -213,23 +216,23 @@
         using var stream = datei.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024);
         using var fs = File.Create(pfad);
         await stream.CopyToAsync(fs);
-        GarageService.FotoSetzen(bearbeitenGarage, dateiName);
+        await GarageService.FotoSetzen(bearbeitenGarage, dateiName);
     }
 
-    private void FotoLoeschenClick()
+    private async Task FotoLoeschenClick()
     {
         if (bearbeitenGarage != null)
-            GarageService.FotoLoeschen(bearbeitenGarage);
+            await GarageService.FotoLoeschen(bearbeitenGarage);
     }
 
     private void NeueGarageOeffnen() { neueGarageOffen = true; neuerGarageName = ""; }
     private void NeueGarageSchliessen() => neueGarageOffen = false;
 
-    private void NeueGarageSpeichern()
+    private async Task NeueGarageSpeichern()
     {
         if (!string.IsNullOrWhiteSpace(neuerGarageName))
         {
-            GarageService.GarageHinzufuegen(neuerGarageName);
+            await GarageService.GarageHinzufuegen(neuerGarageName);
             neuerGarageName = "";
             neueGarageOffen = false;
         }
@@ -295,6 +298,7 @@
         flex-wrap: wrap;
         gap: 12px;
         padding: 16px;
+        justify-content: center;
     }
 
     .garage-karte {
