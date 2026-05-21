@@ -95,6 +95,18 @@ namespace GTAGarageManager.Services
             SpeichereJson();
         }
 
+        public void FahrzeugVerschieben(Garage garage, int vonIndex, int nachIndex)
+        {
+            if (vonIndex < 0 || vonIndex >= garage.Fahrzeuge.Count) return;
+            if (nachIndex < 0 || nachIndex >= garage.Fahrzeuge.Count) return;
+            var fahrzeug = garage.Fahrzeuge[vonIndex];
+            garage.Fahrzeuge.RemoveAt(vonIndex);
+            garage.Fahrzeuge.Insert(nachIndex, fahrzeug);
+            SlotNummerNeuBerechnen(garage);
+            BerechneStatistiken();
+            SpeichereJson();
+        }
+
         // ── FOTO ──────────────────────────────────────────────────────
 
         public void FotoSetzen(Garage garage, string dateiName)

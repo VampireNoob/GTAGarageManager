@@ -25,8 +25,11 @@
 </div>
 
 <div class="garagen-grid" id="garagen-sortable">
-    @foreach (var garage in GarageService.Garagen)
+    @for (int gi = 0; gi < GarageService.Garagen.Count; gi++)
     {
+        var garage = GarageService.Garagen[gi];
+        var garageIndex = gi;
+
         <div class="garage-karte" @key="garage.Name">
             <div class="garage-header">
                 <span class="drag-handle">☰</span>
@@ -36,10 +39,12 @@
                     <button class="btn-bearbeiten" @onclick="() => BearbeitenOeffnen(garage)">✏</button>
                 </div>
             </div>
-            <div class="fahrzeug-liste">
+
+            <div class="fahrzeug-liste" id="fahrzeug-sortable-@garageIndex">
                 @foreach (var fahrzeug in garage.Fahrzeuge)
                 {
-                    <div class="fahrzeug-zeile @(fahrzeug.IsDuplikat ? "duplikat" : "") @(fahrzeug.IsLeer ? "leer" : "")">
+                    <div class="fahrzeug-zeile @(fahrzeug.IsDuplikat ? "duplikat" : "") @(fahrzeug.IsLeer ? "leer" : "")" @key="fahrzeug.SlotNummer">
+                        <span class="fahrzeug-drag-handle">⠿</span>
                         <span class="slot-nummer">@fahrzeug.SlotNummer</span>
                         <span class="fahrzeug-name">@fahrzeug.AnzeigeName</span>
                         @if (fahrzeug.IsDuplikat)
@@ -49,6 +54,7 @@
                     </div>
                 }
             </div>
+
             @if (!string.IsNullOrEmpty(garage.FotoPath))
             {
                 <img src="fotos/@garage.FotoPath" class="garage-foto" />
@@ -91,7 +97,7 @@
                     <button class="btn-foto-loeschen" @onclick="FotoLoeschenClick">Foto entfernen</button>
                 }
                 <InputFile OnChange="FotoHochladen" accept="image/*" class="foto-input" />
-                <label>📷 Foto hochladen</label>
+                <label>Foto hochladen</label>
             </div>
             <div class="modal-footer">
                 <button class="btn-speichern" @onclick="BearbeitenSpeichern">Speichern</button>
@@ -133,6 +139,9 @@
     {
         dotnetRef = DotNetObjectReference.Create(this);
         await JSRuntime.InvokeVoidAsync("initSortable", dotnetRef);
+
+        for (int i = 0; i < GarageService.Garagen.Count; i++)
+            await JSRuntime.InvokeVoidAsync("initFahrzeugSortable", dotnetRef, i);
     }
 
     [JSInvokable]
@@ -141,6 +150,15 @@
         GarageService.GarageVerschieben(oldIndex, newIndex);
         StateHasChanged();
         await JSRuntime.InvokeVoidAsync("initSortable", dotnetRef);
+    }
+
+    [JSInvokable]
+    public async Task OnFahrzeugReorder(int garageIndex, int oldIndex, int newIndex)
+    {
+        var garage = GarageService.Garagen[garageIndex];
+        GarageService.FahrzeugVerschieben(garage, oldIndex, newIndex);
+        StateHasChanged();
+        await JSRuntime.InvokeVoidAsync("initFahrzeugSortable", dotnetRef, garageIndex);
     }
 
     private void BearbeitenOeffnen(Garage garage)
@@ -360,6 +378,22 @@
 
         .fahrzeug-zeile.duplikat {
             background-color: #3d1a19;
+        }
+
+    .fahrzeug-drag-handle {
+        color: #3a3a3c;
+        cursor: grab;
+        margin-right: 4px;
+        font-size: 12px;
+        flex-shrink: 0;
+    }
+
+        .fahrzeug-drag-handle:hover {
+            color: #8e8e93;
+        }
+
+        .fahrzeug-drag-handle:active {
+            cursor: grabbing;
         }
 
     .slot-nummer {
