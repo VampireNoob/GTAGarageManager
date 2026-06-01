@@ -94,26 +94,6 @@ namespace GTAGarageManager.Services
             }
         }
 
-        public async Task FahrzeugVerschieben(Garage garage, int vonIndex, int nachIndex)
-        {
-            if (vonIndex < 0 || vonIndex >= garage.Fahrzeuge.Count) return;
-            if (nachIndex < 0 || nachIndex >= garage.Fahrzeuge.Count) return;
-
-            var fahrzeug = garage.Fahrzeuge[vonIndex];
-            garage.Fahrzeuge.RemoveAt(vonIndex);
-            garage.Fahrzeuge.Insert(nachIndex, fahrzeug);
-
-            for (int i = 0; i < garage.Fahrzeuge.Count; i++)
-            {
-                garage.Fahrzeuge[i].SlotNummer = i + 1;
-                await _supabase.From<Fahrzeug>()
-                    .Where(f => f.Id == garage.Fahrzeuge[i].Id)
-                    .Set(f => f.SlotNummer, i + 1)
-                    .Update();
-            }
-            BerechneStatistiken();
-        }
-
         // ── GARAGE CRUD ───────────────────────────────────────────────
 
         public async Task GarageHinzufuegen(string name)
@@ -147,24 +127,6 @@ namespace GTAGarageManager.Services
                 .Set(g => g.Name, neuerName.Trim())
                 .Update();
             garage.Name = neuerName.Trim();
-        }
-
-        public async Task GarageVerschieben(int vonIndex, int nachIndex)
-        {
-            if (vonIndex < 0 || vonIndex >= Garagen.Count) return;
-            if (nachIndex < 0 || nachIndex >= Garagen.Count) return;
-
-            var garage = Garagen[vonIndex];
-            Garagen.RemoveAt(vonIndex);
-            Garagen.Insert(nachIndex, garage);
-
-            for (int i = 0; i < Garagen.Count; i++)
-            {
-                await _supabase.From<Garage>()
-                    .Where(g => g.Id == Garagen[i].Id)
-                    .Set(g => g.Reihenfolge, i)
-                    .Update();
-            }
         }
 
         // ── FOTO ──────────────────────────────────────────────────────

@@ -2,7 +2,6 @@
 @using GTAGarageManager.Models
 @using GTAGarageManager.Services
 @inject GarageService GarageService
-@inject IJSRuntime JSRuntime
 @inject IWebHostEnvironment Env
 
 @if (!istGeladen)
@@ -31,15 +30,11 @@ else
         <button class="btn-neu-garage" @onclick="NeueGarageOeffnen">+ Neue Garage</button>
     </div>
 
-    <div class="garagen-grid" id="garagen-sortable">
-        @for (int gi = 0; gi < GarageService.Garagen.Count; gi++)
+    <div class="garagen-grid">
+        @foreach (var garage in GarageService.Garagen)
         {
-            var garage = GarageService.Garagen[gi];
-            var garageIndex = gi;
-
-            <div class="garage-karte" @key="garage.Name">
+            <div class="garage-karte" @key="garage.Id">
                 <div class="garage-header">
-                    <span class="drag-handle">☰</span>
                     <span class="garage-name">@garage.Name</span>
                     <div style="display:flex; gap:4px; align-items:center;">
                         <span class="garage-kapazitaet">@garage.Kapazitaet</span>
@@ -47,12 +42,13 @@ else
                     </div>
                 </div>
 
-                <div class="fahrzeug-liste" id="fahrzeug-sortable-@garageIndex">
-                    @foreach (var fahrzeug in garage.Fahrzeuge)
+                <div class="fahrzeug-liste">
+                    @for (int i = 0; i < garage.Fahrzeuge.Count; i++)
                     {
-                        <div class="fahrzeug-zeile @(fahrzeug.IsDuplikat ? "duplikat" : "") @(fahrzeug.IsLeer ? "leer" : "")" @key="fahrzeug.SlotNummer">
-                            <span class="fahrzeug-drag-handle">⠿</span>
-                            <span class="slot-nummer">@(garage.Fahrzeuge.IndexOf(fahrzeug) + 1)</span>
+                        var fahrzeug = garage.Fahrzeuge[i];
+                        var slotNummer = i + 1;
+                        <div class="fahrzeug-zeile @(fahrzeug.IsDuplikat ? "duplikat" : "") @(fahrzeug.IsLeer ? "leer" : "")" @key="fahrzeug.Id">
+                            <span class="slot-nummer">@slotNummer</span>
                             <span class="fahrzeug-name">@fahrzeug.AnzeigeName</span>
                             @if (fahrzeug.IsDuplikat)
                             {
@@ -142,40 +138,11 @@ else
     private string neuesFahrzeug = "";
     private string neuerGarageName = "";
     private bool neueGarageOffen = false;
-    private DotNetObjectReference<Garagen>? dotnetRef;
 
     protected override async Task OnInitializedAsync()
     {
         await GarageService.LadeAlleGaragen();
         istGeladen = true;
-    }
-
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (istGeladen)
-        {
-            dotnetRef ??= DotNetObjectReference.Create(this);
-            await JSRuntime.InvokeVoidAsync("initSortable", dotnetRef);
-            for (int i = 0; i < GarageService.Garagen.Count; i++)
-                await JSRuntime.InvokeVoidAsync("initFahrzeugSortable", dotnetRef, i);
-        }
-    }
-
-    [JSInvokable]
-    public async Task OnReorder(int oldIndex, int newIndex)
-    {
-        await GarageService.GarageVerschieben(oldIndex, newIndex);
-        StateHasChanged();
-        await JSRuntime.InvokeVoidAsync("initSortable", dotnetRef);
-    }
-
-    [JSInvokable]
-    public async Task OnFahrzeugReorder(int garageIndex, int oldIndex, int newIndex)
-    {
-        var garage = GarageService.Garagen[garageIndex];
-        await GarageService.FahrzeugVerschieben(garage, oldIndex, newIndex);
-        StateHasChanged();
-        await JSRuntime.InvokeVoidAsync("initFahrzeugSortable", dotnetRef, garageIndex);
     }
 
     private void BearbeitenOeffnen(Garage garage)
@@ -331,22 +298,6 @@ else
         border-bottom: 2px solid #ff9500;
     }
 
-    .drag-handle {
-        color: #8e8e93;
-        cursor: grab;
-        margin-right: 6px;
-        font-size: 14px;
-    }
-
-        .drag-handle:active {
-            cursor: grabbing;
-        }
-
-    .drag-ghost {
-        opacity: 0.4;
-        background: #ff9500;
-    }
-
     .garage-name {
         font-size: 11px;
         font-weight: 600;
@@ -395,22 +346,6 @@ else
 
         .fahrzeug-zeile.duplikat {
             background-color: #3d1a19;
-        }
-
-    .fahrzeug-drag-handle {
-        color: #3a3a3c;
-        cursor: grab;
-        margin-right: 4px;
-        font-size: 12px;
-        flex-shrink: 0;
-    }
-
-        .fahrzeug-drag-handle:hover {
-            color: #8e8e93;
-        }
-
-        .fahrzeug-drag-handle:active {
-            cursor: grabbing;
         }
 
     .slot-nummer {
