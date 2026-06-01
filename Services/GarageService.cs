@@ -94,6 +94,15 @@ namespace GTAGarageManager.Services
             }
         }
 
+        public async Task FahrzeugAktualisieren(Fahrzeug fahrzeug)
+        {
+            await _supabase.From<Fahrzeug>()
+                .Where(f => f.Id == fahrzeug.Id)
+                .Set(f => f.Name, fahrzeug.Name)
+                .Update();
+            BerechneStatistiken();
+        }
+
         // ── GARAGE CRUD ───────────────────────────────────────────────
 
         public async Task GarageHinzufuegen(string name)
