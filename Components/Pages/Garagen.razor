@@ -35,6 +35,9 @@ else
         {
             <div class="garage-karte" @key="garage.Id">
                 <div class="garage-header">
+                    <span class="einklapp-pfeil" @onclick="() => GarageEinklappen(garage.Id)">
+                        @(eingeklappteGaragen.Contains(garage.Id) ? "▶" : "▼")
+                    </span>
                     <span class="garage-name">@garage.Name</span>
                     <div style="display:flex; gap:4px; align-items:center;">
                         <span class="garage-kapazitaet">@garage.Kapazitaet</span>
@@ -43,18 +46,32 @@ else
                 </div>
 
                 <div class="fahrzeug-liste">
-                    @for (int i = 0; i < garage.Fahrzeuge.Count; i++)
+                    @if (!eingeklappteGaragen.Contains(garage.Id))
                     {
-                        var fahrzeug = garage.Fahrzeuge[i];
-                        var slotNummer = i + 1;
-                        <div class="fahrzeug-zeile @(fahrzeug.IsDuplikat ? "duplikat" : "") @(fahrzeug.IsLeer ? "leer" : "")" @key="fahrzeug.Id">
-                            <span class="slot-nummer">@slotNummer</span>
-                            <span class="fahrzeug-name">@fahrzeug.AnzeigeName</span>
-                            @if (fahrzeug.IsDuplikat)
+                        <div class="fahrzeug-liste">
+                            @for (int i = 0; i < garage.Fahrzeuge.Count; i++)
                             {
-                                <span class="duplikat-icon">!</span>
+                                var fahrzeug = garage.Fahrzeuge[i];
+                                var slotNummer = i + 1;
+                                <div class="fahrzeug-zeile @(fahrzeug.IsDuplikat ? "duplikat" : "") @(fahrzeug.IsLeer ? "leer" : "")" @key="fahrzeug.Id">
+                                    <span class="slot-nummer">@slotNummer</span>
+                                    <span class="fahrzeug-name">@fahrzeug.AnzeigeName</span>
+                                    @if (fahrzeug.IsDuplikat)
+                                    {
+                                        <span class="duplikat-icon">!</span>
+                                    }
+                                </div>
                             }
                         </div>
+
+                        @if (!string.IsNullOrEmpty(garage.FotoPath))
+                        {
+                            <img src="fotos/@garage.FotoPath" class="garage-foto" />
+                        }
+                        else
+                        {
+                            <div class="garage-foto-leer">kein Foto</div>
+                        }
                     }
                 </div>
 
@@ -138,6 +155,16 @@ else
     private string neuesFahrzeug = "";
     private string neuerGarageName = "";
     private bool neueGarageOffen = false;
+
+    private HashSet<long> eingeklappteGaragen = new();
+
+    private void GarageEinklappen(long garageId)
+    {
+        if (eingeklappteGaragen.Contains(garageId))
+            eingeklappteGaragen.Remove(garageId);
+        else
+            eingeklappteGaragen.Add(garageId);
+    }
 
     protected override async Task OnInitializedAsync()
     {
@@ -601,5 +628,17 @@ else
         .btn-garage-loeschen:hover {
             background-color: #ff3b30;
             color: #ffffff;
+        }
+
+    .einklapp-pfeil {
+        color: #ff9500;
+        cursor: pointer;
+        margin-right: 6px;
+        font-size: 10px;
+        user-select: none;
+    }
+
+        .einklapp-pfeil:hover {
+            color: #cc7700;
         }
 </style>
