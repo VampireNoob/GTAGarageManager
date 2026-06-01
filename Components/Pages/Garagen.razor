@@ -152,9 +152,9 @@ else
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender)
+        if (istGeladen)
         {
-            dotnetRef = DotNetObjectReference.Create(this);
+            dotnetRef ??= DotNetObjectReference.Create(this);
             await JSRuntime.InvokeVoidAsync("initSortable", dotnetRef);
             for (int i = 0; i < GarageService.Garagen.Count; i++)
                 await JSRuntime.InvokeVoidAsync("initFahrzeugSortable", dotnetRef, i);
