@@ -50,9 +50,9 @@ else
                 <div class="fahrzeug-liste" id="fahrzeug-sortable-@garageIndex">
                     @foreach (var fahrzeug in garage.Fahrzeuge)
                     {
-                        <div class="fahrzeug-zeile @(fahrzeug.IsDuplikat ? "duplikat" : "") @(fahrzeug.IsLeer ? "leer" : "")" @key="fahrzeug.SlotNummer">
+                        <div class="fahrzeug-zeile @(fahrzeug.IsDuplikat ? "duplikat" : "") @(fahrzeug.IsLeer ? "leer" : "")" @key="fahrzeug.Id">
                             <span class="fahrzeug-drag-handle">⠿</span>
-                            <span class="slot-nummer">@fahrzeug.SlotNummer</span>
+                            <span class="slot-nummer">@(garage.Fahrzeuge.IndexOf(fahrzeug) + 1)</span>
                             <span class="fahrzeug-name">@fahrzeug.AnzeigeName</span>
                             @if (fahrzeug.IsDuplikat)
                             {
