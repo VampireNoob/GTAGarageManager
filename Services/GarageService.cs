@@ -67,10 +67,31 @@ namespace GTAGarageManager.Services
 
         public async Task FahrzeugLoeschen(Fahrzeug fahrzeug)
         {
+            // Garage finden
+            var garage = Garagen.FirstOrDefault(g => g.Id == fahrzeug.GarageId);
+
             await _supabase.From<Fahrzeug>()
                 .Where(f => f.Id == fahrzeug.Id)
                 .Delete();
+
             await LadeAlleGaragen();
+
+            // Slot-Nummern neu berechnen
+            if (garage != null)
+            {
+                var aktualisierteGarage = Garagen.FirstOrDefault(g => g.Id == garage.Id);
+                if (aktualisierteGarage != null)
+                {
+                    for (int i = 0; i < aktualisierteGarage.Fahrzeuge.Count; i++)
+                    {
+                        aktualisierteGarage.Fahrzeuge[i].SlotNummer = i + 1;
+                        await _supabase.From<Fahrzeug>()
+                            .Where(f => f.Id == aktualisierteGarage.Fahrzeuge[i].Id)
+                            .Set(f => f.SlotNummer, i + 1)
+                            .Update();
+                    }
+                }
+            }
         }
 
         public async Task FahrzeugVerschieben(Garage garage, int vonIndex, int nachIndex)
