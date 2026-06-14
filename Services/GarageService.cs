@@ -1,5 +1,4 @@
 ﻿using GTAGarageManager.Models;
-using Microsoft.AspNetCore.Hosting;
 using Supabase;
 
 namespace GTAGarageManager.Services
@@ -7,20 +6,16 @@ namespace GTAGarageManager.Services
     public class GarageService
     {
         private readonly Client _supabase;
-        private readonly string _fotoPfad;
+        private const string BucketName = "garagen-fotos";
 
         public List<Garage> Garagen { get; private set; } = new();
         public int GesamtFahrzeuge { get; private set; }
         public int DuplikatTypen { get; private set; }
         public int DuplikatGesamt { get; private set; }
 
-        public GarageService(Client supabase, IWebHostEnvironment env)
+        public GarageService(Client supabase)
         {
             _supabase = supabase;
-            _fotoPfad = Path.Combine(env.WebRootPath, "fotos");
-
-            if (!Directory.Exists(_fotoPfad))
-                Directory.CreateDirectory(_fotoPfad);
         }
 
         // ── LADEN ─────────────────────────────────────────────────────
@@ -65,32 +60,40 @@ namespace GTAGarageManager.Services
             await LadeAlleGaragen();
         }
 
-        public async Task FahrzeugLoeschen(Fahrzeug fahrzeug)
+        public async Task FahrzeugAktualisieren(Fahrzeug fahrzeug)
         {
             await _supabase.From<Fahrzeug>()
                 .Where(f => f.Id == fahrzeug.Id)
-                .Delete();
-            await LadeAlleGaragen();
+                .Set(f => f.Name, fahrzeug.Name)
+                .Update();
+            BerechneStatistiken();
         }
 
-        public async Task FahrzeugVerschieben(Garage garage, int vonIndex, int nachIndex)
+        public async Task FahrzeugLoeschen(Fahrzeug fahrzeug)
         {
-            if (vonIndex < 0 || vonIndex >= garage.Fahrzeuge.Count) return;
-            if (nachIndex < 0 || nachIndex >= garage.Fahrzeuge.Count) return;
+            var garage = Garagen.FirstOrDefault(g => g.Id == fahrzeug.GarageId);
 
-            var fahrzeug = garage.Fahrzeuge[vonIndex];
-            garage.Fahrzeuge.RemoveAt(vonIndex);
-            garage.Fahrzeuge.Insert(nachIndex, fahrzeug);
+            await _supabase.From<Fahrzeug>()
+                .Where(f => f.Id == fahrzeug.Id)
+                .Delete();
 
-            for (int i = 0; i < garage.Fahrzeuge.Count; i++)
+            await LadeAlleGaragen();
+
+            if (garage != null)
             {
-                garage.Fahrzeuge[i].SlotNummer = i + 1;
-                await _supabase.From<Fahrzeug>()
-                    .Where(f => f.Id == garage.Fahrzeuge[i].Id)
-                    .Set(f => f.SlotNummer, i + 1)
-                    .Update();
+                var aktualisierteGarage = Garagen.FirstOrDefault(g => g.Id == garage.Id);
+                if (aktualisierteGarage != null)
+                {
+                    for (int i = 0; i < aktualisierteGarage.Fahrzeuge.Count; i++)
+                    {
+                        aktualisierteGarage.Fahrzeuge[i].SlotNummer = i + 1;
+                        await _supabase.From<Fahrzeug>()
+                            .Where(f => f.Id == aktualisierteGarage.Fahrzeuge[i].Id)
+                            .Set(f => f.SlotNummer, i + 1)
+                            .Update();
+                    }
+                }
             }
-            BerechneStatistiken();
         }
 
         // ── GARAGE CRUD ───────────────────────────────────────────────
@@ -128,55 +131,66 @@ namespace GTAGarageManager.Services
             garage.Name = neuerName.Trim();
         }
 
-        public async Task GarageVerschieben(int vonIndex, int nachIndex)
+        // ── FOTO (Supabase Storage) ───────────────────────────────────
+
+        public async Task FotoSetzen(Garage garage, byte[] dateiBytes, string dateiName)
         {
-            if (vonIndex < 0 || vonIndex >= Garagen.Count) return;
-            if (nachIndex < 0 || nachIndex >= Garagen.Count) return;
+            var pfadImBucket = $"{garage.Id}/{Guid.NewGuid()}{Path.GetExtension(dateiName)}";
 
-            var garage = Garagen[vonIndex];
-            Garagen.RemoveAt(vonIndex);
-            Garagen.Insert(nachIndex, garage);
+            await AltesFotoLoeschen(garage);
 
-            for (int i = 0; i < Garagen.Count; i++)
-            {
-                await _supabase.From<Garage>()
-                    .Where(g => g.Id == Garagen[i].Id)
-                    .Set(g => g.Reihenfolge, i)
-                    .Update();
-            }
-        }
+            await _supabase.Storage
+                .From(BucketName)
+                .Upload(dateiBytes, pfadImBucket);
 
-        // ── FOTO ──────────────────────────────────────────────────────
+            var oeffentlicheUrl = _supabase.Storage
+                .From(BucketName)
+                .GetPublicUrl(pfadImBucket);
 
-        public async Task FotoSetzen(Garage garage, string dateiName)
-        {
-            if (!string.IsNullOrEmpty(garage.FotoPath))
-            {
-                var alterPfad = Path.Combine(_fotoPfad, garage.FotoPath);
-                if (File.Exists(alterPfad)) File.Delete(alterPfad);
-            }
             await _supabase.From<Garage>()
                 .Where(g => g.Id == garage.Id)
-                .Set(g => g.FotoPath, dateiName)
+                .Set(g => g.FotoPath, oeffentlicheUrl)
                 .Update();
-            garage.FotoPath = dateiName;
+
+            garage.FotoPath = oeffentlicheUrl;
         }
 
         public async Task FotoLoeschen(Garage garage)
         {
             if (!string.IsNullOrEmpty(garage.FotoPath))
             {
-                var pfad = Path.Combine(_fotoPfad, garage.FotoPath);
-                if (File.Exists(pfad)) File.Delete(pfad);
+                await AltesFotoLoeschen(garage);
+
                 await _supabase.From<Garage>()
                     .Where(g => g.Id == garage.Id)
                     .Set(g => g.FotoPath, (string?)null)
                     .Update();
+
                 garage.FotoPath = null;
             }
         }
 
-        public string FotoPfad => _fotoPfad;
+        private async Task AltesFotoLoeschen(Garage garage)
+        {
+            if (string.IsNullOrEmpty(garage.FotoPath)) return;
+
+            var marker = $"{BucketName}/";
+            var index = garage.FotoPath.IndexOf(marker, StringComparison.Ordinal);
+            if (index < 0) return;
+
+            var pfadImBucket = garage.FotoPath.Substring(index + marker.Length);
+
+            try
+            {
+                await _supabase.Storage
+                    .From(BucketName)
+                    .Remove(new List<string> { pfadImBucket });
+            }
+            catch
+            {
+                // Falls das Löschen fehlschlägt, ignorieren
+            }
+        }
 
         public async Task Speichern()
         {

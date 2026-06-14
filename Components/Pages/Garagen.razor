@@ -2,167 +2,206 @@
 @using GTAGarageManager.Models
 @using GTAGarageManager.Services
 @inject GarageService GarageService
-@inject IJSRuntime JSRuntime
-@inject IWebHostEnvironment Env
-@rendermode InteractiveServer
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
 
-<PageTitle>GTA Garage Manager</PageTitle>
-
-<div class="topbar">
-    <div class="topbar-titel">
-        <span class="titel-gta">GTA ONLINE</span>
-        <span class="titel-rest">GARAGE MANAGER</span>
+@if (!istGeladen)
+{
+    <div style="color: #ff9500; text-align: center; margin-top: 50px; font-size: 20px;">
+        Laden...
     </div>
-    <div class="topbar-stats">
-        Fahrzeuge gesamt: <strong>@GarageService.GesamtFahrzeuge</strong>
-        &nbsp;|&nbsp;
-        Duplikate: <strong>@GarageService.DuplikatTypen Typen (@GarageService.DuplikatGesamt x)</strong>
+}
+else
+{
+    <PageTitle>GTA Garage Manager</PageTitle>
+
+    <div class="topbar">
+        <div class="topbar-titel">
+            <span class="titel-gta">GTA ONLINE</span>
+            <span class="titel-rest">GARAGE MANAGER</span>
+        </div>
+        <div class="topbar-stats">
+            Fahrzeuge gesamt: <strong>@GarageService.GesamtFahrzeuge</strong>
+            &nbsp;|&nbsp;
+            Duplikate: <strong>@GarageService.DuplikatTypen Typen (@GarageService.DuplikatGesamt x)</strong>
+        </div>
     </div>
-</div>
 
-<div style="padding: 12px 16px 0 16px;">
-    <button class="btn-neu-garage" @onclick="NeueGarageOeffnen">+ Neue Garage</button>
-</div>
+    <div style="padding: 12px 16px 0 16px;">
+        <button class="btn-neu-garage" @onclick="NeueGarageOeffnen">+ Neue Garage</button>
+    </div>
 
-<div class="garagen-grid" id="garagen-sortable">
-    @for (int gi = 0; gi < GarageService.Garagen.Count; gi++)
+    <div style="padding: 12px 16px 0 16px;">
+        <input class="such-feld" @bind="suchBegriff" @bind:event="oninput" placeholder="🔍 Fahrzeug suchen..." />
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(suchBegriff))
     {
-        var garage = GarageService.Garagen[gi];
-        var garageIndex = gi;
+        var treffer = GarageService.Garagen
+            .SelectMany(g => g.Fahrzeuge
+                .Where(f => !f.IsLeer && f.Name.Contains(suchBegriff, StringComparison.OrdinalIgnoreCase))
+                .Select(f => new { Garage = g, Fahrzeug = f, Slot = g.Fahrzeuge.IndexOf(f) + 1 }))
+            .ToList();
 
-        <div class="garage-karte" @key="garage.Name">
-            <div class="garage-header">
-                <span class="drag-handle">☰</span>
-                <span class="garage-name">@garage.Name</span>
-                <div style="display:flex; gap:4px; align-items:center;">
-                    <span class="garage-kapazitaet">@garage.Kapazitaet</span>
-                    <button class="btn-bearbeiten" @onclick="() => BearbeitenOeffnen(garage)">✏</button>
-                </div>
-            </div>
-
-            <div class="fahrzeug-liste" id="fahrzeug-sortable-@garageIndex">
-                @foreach (var fahrzeug in garage.Fahrzeuge)
-                {
-                    <div class="fahrzeug-zeile @(fahrzeug.IsDuplikat ? "duplikat" : "") @(fahrzeug.IsLeer ? "leer" : "")" @key="fahrzeug.SlotNummer">
-                        <span class="fahrzeug-drag-handle">⠿</span>
-                        <span class="slot-nummer">@fahrzeug.SlotNummer</span>
-                        <span class="fahrzeug-name">@fahrzeug.AnzeigeName</span>
-                        @if (fahrzeug.IsDuplikat)
-                        {
-                            <span class="duplikat-icon">!</span>
-                        }
-                    </div>
-                }
-            </div>
-
-            @if (!string.IsNullOrEmpty(garage.FotoPath))
+        <div class="such-ergebnisse">
+            @if (treffer.Any())
             {
-                <img src="fotos/@garage.FotoPath" class="garage-foto" />
+                <h3 style="color:#ff9500; padding:0 16px;">@treffer.Count Treffer für "@suchBegriff"</h3>
+                <div class="treffer-grid">
+                    @foreach (var t in treffer)
+                    {
+                        <div class="treffer-karte @(t.Fahrzeug.IsDuplikat ? "duplikat" : "")">
+                            <div class="treffer-name">
+                                @t.Fahrzeug.Name
+                                @if (t.Fahrzeug.IsDuplikat)
+                                {
+                                    <span class="duplikat-badge">DUPLIKAT</span>
+                                }
+                            </div>
+                            <div class="treffer-info">📍 @t.Garage.Name – Slot @t.Slot</div>
+                            @if (!string.IsNullOrEmpty(t.Garage.FotoPath))
+                            {
+                                <img src="@t.Garage.FotoPath" class="treffer-foto" />
+                            }
+                        </div>
+                    }
+                </div>
             }
             else
             {
-                <div class="garage-foto-leer">kein Foto</div>
+                <p style="color:#8e8e93; padding:0 16px;">Keine Treffer für "@suchBegriff"</p>
             }
         </div>
     }
-</div>
 
-@if (bearbeitenGarage != null)
-{
-    <div class="modal-overlay" @onclick="BearbeitenSchliessen">
-        <div class="modal-inhalt" @onclick:stopPropagation>
-            <div class="modal-header">
-                <input class="modal-garage-name" @bind="editGarageName" placeholder="Garage-Name" />
-                <button class="btn-schliessen" @onclick="BearbeitenSchliessen">✕</button>
-            </div>
-            <div class="modal-fahrzeuge">
-                @foreach (var fahrzeug in bearbeitenGarage.Fahrzeuge.ToList())
-                {
-                    <div class="modal-zeile">
-                        <span class="modal-slot">@fahrzeug.SlotNummer</span>
-                        <input class="modal-input" @bind="fahrzeug.Name" placeholder="Fahrzeugname" />
-                        <button class="btn-loeschen" @onclick="() => FahrzeugLoeschenClick(fahrzeug)">×</button>
+    <div class="garagen-grid">
+        @foreach (var garage in GarageService.Garagen)
+        {
+            <div class="garage-karte" @key="garage.Id">
+                <div class="garage-header">
+                    <span class="einklapp-pfeil" @onclick="() => GarageEinklappen(garage.Id)">
+                        @(eingeklappteGaragen.Contains(garage.Id) ? "▶" : "▼")
+                    </span>
+                    <span class="garage-name">@garage.Name</span>
+                    <div style="display:flex; gap:4px; align-items:center;">
+                        <span class="garage-kapazitaet">@garage.Kapazitaet</span>
+                        <button class="btn-bearbeiten" @onclick="() => BearbeitenOeffnen(garage)">✏</button>
                     </div>
-                }
-            </div>
-            <div class="modal-neu">
-                <input class="modal-input" @bind="neuesFahrzeug" placeholder="Neues Fahrzeug..."
-                       @onkeydown="@(e => { if (e.Key == "Enter") FahrzeugHinzufuegenClick(); })" />
-                <button class="btn-hinzufuegen" @onclick="FahrzeugHinzufuegenClick">+ Hinzufügen</button>
-            </div>
-            <div class="modal-foto">
-                @if (!string.IsNullOrEmpty(bearbeitenGarage.FotoPath))
-                {
-                    <img src="fotos/@bearbeitenGarage.FotoPath" class="modal-foto-vorschau" />
-                    <button class="btn-foto-loeschen" @onclick="FotoLoeschenClick">Foto entfernen</button>
-                }
-                <InputFile OnChange="FotoHochladen" accept="image/*" class="foto-input" />
-                <label>Foto hochladen</label>
-            </div>
-            <div class="modal-footer">
-                <button class="btn-speichern" @onclick="BearbeitenSpeichern">Speichern</button>
-                <button class="btn-garage-loeschen" @onclick="GarageLoeschenClick">Garage löschen</button>
-            </div>
-        </div>
-    </div>
-}
+                </div>
 
-@if (neueGarageOffen)
-{
-    <div class="modal-overlay" @onclick="NeueGarageSchliessen">
-        <div class="modal-inhalt" @onclick:stopPropagation>
-            <div class="modal-header">
-                <span style="color:#ff9500; font-weight:bold; font-size:16px;">Neue Garage anlegen</span>
-                <button class="btn-schliessen" @onclick="NeueGarageSchliessen">✕</button>
+                @if (!eingeklappteGaragen.Contains(garage.Id))
+                {
+                    <div class="fahrzeug-liste">
+                        @for (int i = 0; i < garage.Fahrzeuge.Count; i++)
+                        {
+                            var fahrzeug = garage.Fahrzeuge[i];
+                            var slotNummer = i + 1;
+                            <div class="fahrzeug-zeile @(fahrzeug.IsDuplikat ? "duplikat" : "") @(fahrzeug.IsLeer ? "leer" : "")" @key="fahrzeug.Id">
+                                <span class="slot-nummer">@slotNummer</span>
+                                <span class="fahrzeug-name">@fahrzeug.AnzeigeName</span>
+                                @if (fahrzeug.IsDuplikat)
+                                {
+                                    <span class="duplikat-icon">!</span>
+                                }
+                            </div>
+                        }
+                    </div>
+
+                    @if (!string.IsNullOrEmpty(garage.FotoPath))
+                    {
+                        <img src="@garage.FotoPath" class="garage-foto" />
+                    }
+                    else
+                    {
+                        <div class="garage-foto-leer">kein Foto</div>
+                    }
+                }
             </div>
-            <div style="padding: 16px;">
-                <input class="modal-input" style="width:100%;" @bind="neuerGarageName"
-                       placeholder="Name der Garage..."
-                       @onkeydown="@(e => { if (e.Key == "Enter") NeueGarageSpeichern(); })" />
-            </div>
-            <div class="modal-footer">
-                <button class="btn-speichern" @onclick="NeueGarageSpeichern">Anlegen</button>
+        }
+    </div>
+
+    @if (bearbeitenGarage != null)
+    {
+        <div class="modal-overlay" @onclick="BearbeitenSchliessen">
+            <div class="modal-inhalt" @onclick:stopPropagation>
+                <div class="modal-header">
+                    <input class="modal-garage-name" @bind="editGarageName" placeholder="Garage-Name" />
+                    <button class="btn-schliessen" @onclick="BearbeitenSchliessen">✕</button>
+                </div>
+                <div class="modal-fahrzeuge">
+                    @foreach (var fahrzeug in bearbeitenGarage.Fahrzeuge.ToList())
+                    {
+                        <div class="modal-zeile">
+                            <span class="modal-slot">@fahrzeug.SlotNummer</span>
+                            <input class="modal-input" @bind="fahrzeug.Name" placeholder="Fahrzeugname" />
+                            <button class="btn-loeschen" @onclick="() => FahrzeugLoeschenClick(fahrzeug)">×</button>
+                        </div>
+                    }
+                </div>
+                <div class="modal-neu">
+                    <input class="modal-input" @bind="neuesFahrzeug" placeholder="Neues Fahrzeug..."
+                           @onkeydown="@(e => { if (e.Key == "Enter") FahrzeugHinzufuegenClick(); })" />
+                    <button class="btn-hinzufuegen" @onclick="FahrzeugHinzufuegenClick">+ Hinzufügen</button>
+                </div>
+                <div class="modal-foto">
+                    @if (!string.IsNullOrEmpty(bearbeitenGarage.FotoPath))
+                    {
+                        <img src="@bearbeitenGarage.FotoPath" class="modal-foto-vorschau" />
+                        <button class="btn-foto-loeschen" @onclick="FotoLoeschenClick">Foto entfernen</button>
+                    }
+                    <InputFile OnChange="FotoHochladen" accept="image/*" class="foto-input" />
+                    <label>Foto hochladen</label>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn-speichern" @onclick="BearbeitenSpeichern">Speichern</button>
+                    <button class="btn-garage-loeschen" @onclick="GarageLoeschenClick">Garage löschen</button>
+                </div>
             </div>
         </div>
-    </div>
+    }
+
+    @if (neueGarageOffen)
+    {
+        <div class="modal-overlay" @onclick="NeueGarageSchliessen">
+            <div class="modal-inhalt" @onclick:stopPropagation>
+                <div class="modal-header">
+                    <span style="color:#ff9500; font-weight:bold; font-size:16px;">Neue Garage anlegen</span>
+                    <button class="btn-schliessen" @onclick="NeueGarageSchliessen">✕</button>
+                </div>
+                <div style="padding: 16px;">
+                    <input class="modal-input" style="width:100%;" @bind="neuerGarageName"
+                           placeholder="Name der Garage..."
+                           @onkeydown="@(e => { if (e.Key == "Enter") NeueGarageSpeichern(); })" />
+                </div>
+                <div class="modal-footer">
+                    <button class="btn-speichern" @onclick="NeueGarageSpeichern">Anlegen</button>
+                </div>
+            </div>
+        </div>
+    }
 }
 
 @code {
+    private bool istGeladen = false;
+    private string suchBegriff = "";
     private Garage? bearbeitenGarage = null;
     private string editGarageName = "";
     private string neuesFahrzeug = "";
     private string neuerGarageName = "";
     private bool neueGarageOffen = false;
-    private DotNetObjectReference<Garagen>? dotnetRef;
+    private HashSet<long> eingeklappteGaragen = new();
 
     protected override async Task OnInitializedAsync()
     {
         await GarageService.LadeAlleGaragen();
+        istGeladen = true;
     }
 
-    protected override async Task OnAfterRenderAsync(bool firstRender)
+    private void GarageEinklappen(long garageId)
     {
-        dotnetRef = DotNetObjectReference.Create(this);
-        await JSRuntime.InvokeVoidAsync("initSortable", dotnetRef);
-        for (int i = 0; i < GarageService.Garagen.Count; i++)
-            await JSRuntime.InvokeVoidAsync("initFahrzeugSortable", dotnetRef, i);
-    }
-
-    [JSInvokable]
-    public async Task OnReorder(int oldIndex, int newIndex)
-    {
-        await GarageService.GarageVerschieben(oldIndex, newIndex);
-        StateHasChanged();
-        await JSRuntime.InvokeVoidAsync("initSortable", dotnetRef);
-    }
-
-    [JSInvokable]
-    public async Task OnFahrzeugReorder(int garageIndex, int oldIndex, int newIndex)
-    {
-        var garage = GarageService.Garagen[garageIndex];
-        await GarageService.FahrzeugVerschieben(garage, oldIndex, newIndex);
-        StateHasChanged();
-        await JSRuntime.InvokeVoidAsync("initFahrzeugSortable", dotnetRef, garageIndex);
+        if (eingeklappteGaragen.Contains(garageId))
+            eingeklappteGaragen.Remove(garageId);
+        else
+            eingeklappteGaragen.Add(garageId);
     }
 
     private void BearbeitenOeffnen(Garage garage)
@@ -179,6 +218,10 @@
         if (bearbeitenGarage != null)
         {
             await GarageService.GarageUmbenennen(bearbeitenGarage, editGarageName);
+            foreach (var fahrzeug in bearbeitenGarage.Fahrzeuge)
+            {
+                await GarageService.FahrzeugAktualisieren(fahrzeug);
+            }
             await GarageService.Speichern();
         }
         bearbeitenGarage = null;
@@ -211,12 +254,13 @@
     {
         if (bearbeitenGarage == null) return;
         var datei = e.File;
-        var dateiName = $"{Guid.NewGuid()}{Path.GetExtension(datei.Name)}";
-        var pfad = Path.Combine(GarageService.FotoPfad, dateiName);
+
         using var stream = datei.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024);
-        using var fs = File.Create(pfad);
-        await stream.CopyToAsync(fs);
-        await GarageService.FotoSetzen(bearbeitenGarage, dateiName);
+        using var ms = new MemoryStream();
+        await stream.CopyToAsync(ms);
+        var dateiBytes = ms.ToArray();
+
+        await GarageService.FotoSetzen(bearbeitenGarage, dateiBytes, datei.Name);
     }
 
     private async Task FotoLoeschenClick()
@@ -293,6 +337,89 @@
             background-color: #cc7700;
         }
 
+    .such-feld {
+        width: 100%;
+        max-width: 400px;
+        background-color: #2c2c2e;
+        border: 1px solid #3a3a3c;
+        border-radius: 6px;
+        color: #ffffff;
+        font-size: 14px;
+        padding: 8px 12px;
+        outline: none;
+    }
+
+        .such-feld:focus {
+            border-color: #ff9500;
+        }
+
+    .such-ergebnisse {
+        padding: 12px 0;
+        border-bottom: 2px solid #ff9500;
+        margin-bottom: 12px;
+    }
+
+    .treffer-grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        padding: 12px 16px;
+    }
+
+    .treffer-karte {
+        background-color: #1c1c1e;
+        border: 1px solid #3a3a3c;
+        border-radius: 8px;
+        padding: 12px;
+        width: 220px;
+    }
+
+        .treffer-karte.duplikat {
+            border-color: #ff3b30;
+        }
+
+    .treffer-name {
+        color: #ffffff;
+        font-weight: 600;
+        font-size: 14px;
+        margin-bottom: 6px;
+    }
+
+    .duplikat-badge {
+        background-color: #ff3b30;
+        color: #ffffff;
+        font-size: 9px;
+        font-weight: bold;
+        padding: 2px 6px;
+        border-radius: 4px;
+        margin-left: 6px;
+    }
+
+    .treffer-info {
+        color: #8e8e93;
+        font-size: 12px;
+        margin-bottom: 8px;
+    }
+
+    .treffer-foto {
+        width: 100%;
+        height: 100px;
+        object-fit: cover;
+        border-radius: 6px;
+    }
+
+    .einklapp-pfeil {
+        color: #ff9500;
+        cursor: pointer;
+        margin-right: 6px;
+        font-size: 10px;
+        user-select: none;
+    }
+
+        .einklapp-pfeil:hover {
+            color: #cc7700;
+        }
+
     .garagen-grid {
         display: flex;
         flex-wrap: wrap;
@@ -316,22 +443,6 @@
         background-color: #2c2c2e;
         padding: 8px 10px;
         border-bottom: 2px solid #ff9500;
-    }
-
-    .drag-handle {
-        color: #8e8e93;
-        cursor: grab;
-        margin-right: 6px;
-        font-size: 14px;
-    }
-
-        .drag-handle:active {
-            cursor: grabbing;
-        }
-
-    .drag-ghost {
-        opacity: 0.4;
-        background: #ff9500;
     }
 
     .garage-name {
@@ -382,22 +493,6 @@
 
         .fahrzeug-zeile.duplikat {
             background-color: #3d1a19;
-        }
-
-    .fahrzeug-drag-handle {
-        color: #3a3a3c;
-        cursor: grab;
-        margin-right: 4px;
-        font-size: 12px;
-        flex-shrink: 0;
-    }
-
-        .fahrzeug-drag-handle:hover {
-            color: #8e8e93;
-        }
-
-        .fahrzeug-drag-handle:active {
-            cursor: grabbing;
         }
 
     .slot-nummer {
