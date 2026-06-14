@@ -1,10 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Supabase.Postgrest.Attributes;
+﻿using Supabase.Postgrest.Attributes;
 using Supabase.Postgrest.Models;
+using Newtonsoft.Json;
 
 namespace GTAGarageManager.Models
 {
@@ -23,8 +19,13 @@ namespace GTAGarageManager.Models
         [Column("name")]
         public string Name { get; set; } = string.Empty;
 
+        [JsonIgnore]
         public bool IsDuplikat { get; set; }
+
+        [JsonIgnore]
         public bool IsLeer => string.IsNullOrWhiteSpace(Name) || Name == "/";
+
+        [JsonIgnore]
         public string AnzeigeName => IsLeer ? "─" : Name;
     }
 }

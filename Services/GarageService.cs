@@ -79,6 +79,7 @@ namespace GTAGarageManager.Services
 
             await LadeAlleGaragen();
 
+            // Slot-Nummern neu berechnen
             if (garage != null)
             {
                 var aktualisierteGarage = Garagen.FirstOrDefault(g => g.Id == garage.Id);

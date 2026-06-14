@@ -12,7 +12,7 @@ namespace GTAGarageManager
             builder.Services.AddRazorComponents()
                 .AddInteractiveServerComponents();
 
-            builder.Services.AddSingleton<GTAGarageManager.Services.GarageService>();
+            builder.Services.AddScoped<GTAGarageManager.Services.GarageService>();
             builder.Services.AddSingleton<Supabase.Client>(_ =>
             {
                 var url = builder.Configuration["Supabase:Url"] ?? "";

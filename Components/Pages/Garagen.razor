@@ -218,6 +218,7 @@ else
         if (bearbeitenGarage != null)
         {
             await GarageService.GarageUmbenennen(bearbeitenGarage, editGarageName);
+            // Alle geänderten Fahrzeugnamen speichern
             foreach (var fahrzeug in bearbeitenGarage.Fahrzeuge)
             {
                 await GarageService.FahrzeugAktualisieren(fahrzeug);

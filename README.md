@@ -17,7 +17,6 @@ You can view a live demo here: https://gtagaragemanager-production.up.railway.ap
 - ⚠️ Automatic duplicate detection
 - ✏️ Edit, add and delete vehicles and garages
 - 📸 Photo upload per garage
-- 🔃 Drag & Drop to reorder garages and vehicles
 - 💾 Automatic JSON storage
 - 📱 iPad & mobile friendly
 
