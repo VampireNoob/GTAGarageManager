@@ -1,23 +1,23 @@
 <h1 align="center">GTA Online Garage Manager 🚗</h1>
-
 <p align="center">
     A web app built with <a href="https://dotnet.microsoft.com/apps/aspnet/web-apps/blazor">Blazor</a> and <a href="https://dotnet.microsoft.com/languages/csharp">C#</a> to manage GTA Online garages and vehicles.
 </p>
 
-<img width="1853" height="713" alt="GTA" src="https://github.com/user-attachments/assets/a439af8a-27c7-4b81-964b-2d30d6eb5e12" />
-
-![GTA Online Garage Manager](DEIN_SCREENSHOT_LINK)
+![GTA Online Garage Manager](DEIN_NEUER_SCREENSHOT_LINK)
 
 ## A web app to manage all your GTA Online garages and vehicles.
 
-You can view a live demo here: https://gtagaragemanager-production.up.railway.app/
+You can view a live demo here: https://gtagaragemanager.runasp.net/
+
+**Note:** The live demo is password-protected. Please [contact me](https://github.com/VampireNoob) for demo access.
 
 ## 🙂 Features:
 - 🚗 Overview of all garages and vehicles
 - ⚠️ Automatic duplicate detection
 - ✏️ Edit, add and delete vehicles and garages
-- 📸 Photo upload per garage
-- 💾 Automatic JSON storage
+- 📸 Photo upload per garage (Supabase Storage)
+- 🔒 Password-protected access (Cookie Authentication)
+- ☁️ Cloud database storage (Supabase / PostgreSQL)
 - 📱 iPad & mobile friendly
 
 ## A piece of code – the duplicate detection:
@@ -28,10 +28,17 @@ var duplikatGruppen = alleFahrzeuge
     .ToList();
 ```
 
+## Getting Started (local setup)
+1. Clone the repository
+2. Copy `appsettings.Example.json` to `appsettings.json`
+3. Fill in your own Supabase URL, Key, and a password for `SiteAuth:Password`
+4. Run the project
+
 ## Built With
 * <img src="https://github.com/VampireNoob/Wedding-Wish-List/assets/128150500/c43e4d15-62e4-4254-a673-c4021fd4cf25" width="30"> C#
 * Blazor Server (.NET 8)
-* JavaScript (SortableJS)
+* Supabase (PostgreSQL + Storage)
+* Cookie Authentication
 * HTML & CSS
 
 ## Contact
