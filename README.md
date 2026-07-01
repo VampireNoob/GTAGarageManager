@@ -3,7 +3,7 @@
     A web app built with <a href="https://dotnet.microsoft.com/apps/aspnet/web-apps/blazor">Blazor</a> and <a href="https://dotnet.microsoft.com/languages/csharp">C#</a> to manage GTA Online garages and vehicles.
 </p>
 
-![GTA Online Garage Manager](DEIN_NEUER_SCREENSHOT_LINK)
+<img width="1842" height="648" alt="image" src="https://github.com/user-attachments/assets/efcf8aa2-e8d1-426b-8a18-52746941c3ce" />
 
 ## A web app to manage all your GTA Online garages and vehicles.
 
