@@ -9,7 +9,8 @@
 
 You can view a live demo here: http://gtagaragemanager.runasp.net/
 
-**Note:** The live demo is password-protected. Please [contact me](https://github.com/VampireNoob) for demo access.
+**Note:** The live demo is password-protected. Use the demo credentials below for read-only access (viewing only, no editing):
+- **Demo Password:** `demo123`
 
 ## 🙂 Features:
 - 🚗 Overview of all garages and vehicles
