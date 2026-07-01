@@ -2,7 +2,9 @@
 @attribute [Microsoft.AspNetCore.Authorization.Authorize]
 @using GTAGarageManager.Models
 @using GTAGarageManager.Services
+@using Microsoft.AspNetCore.Components.Authorization
 @inject GarageService GarageService
+@inject AuthenticationStateProvider AuthStateProvider
 @rendermode @(new InteractiveServerRenderMode(prerender: false))
 
 @if (!istGeladen)
@@ -20,16 +22,24 @@ else
             <span class="titel-gta">GTA ONLINE</span>
             <span class="titel-rest">GARAGE MANAGER</span>
         </div>
-        <div class="topbar-stats">
-            Fahrzeuge gesamt: <strong>@GarageService.GesamtFahrzeuge</strong>
-            &nbsp;|&nbsp;
-            Duplikate: <strong>@GarageService.DuplikatTypen Typen (@GarageService.DuplikatGesamt x)</strong>
+        <div class="topbar-stats" style="display:flex; align-items:center; gap:16px;">
+            <span>
+                Fahrzeuge gesamt: <strong>@GarageService.GesamtFahrzeuge</strong>
+                &nbsp;|&nbsp;
+                Duplikate: <strong>@GarageService.DuplikatTypen Typen (@GarageService.DuplikatGesamt x)</strong>
+            </span>
+            <form method="post" action="/logout" style="display:inline;">
+                <button type="submit" style="background:transparent; border:1px solid #8e8e93; color:#8e8e93; border-radius:4px; padding:4px 10px; font-size:11px; cursor:pointer;">Logout</button>
+            </form>
         </div>
     </div>
 
-    <div style="padding: 12px 16px 0 16px;">
-        <button class="btn-neu-garage" @onclick="NeueGarageOeffnen">+ Neue Garage</button>
-    </div>
+    @if (istAdmin)
+    {
+        <div style="padding: 12px 16px 0 16px;">
+            <button class="btn-neu-garage" @onclick="NeueGarageOeffnen">+ Neue Garage</button>
+        </div>
+    }
 
     <div style="padding: 12px 16px 0 16px;">
         <input class="such-feld" @bind="suchBegriff" @bind:event="oninput" placeholder="🔍 Fahrzeug suchen..." />
@@ -85,7 +95,10 @@ else
                     <span class="garage-name">@garage.Name</span>
                     <div style="display:flex; gap:4px; align-items:center;">
                         <span class="garage-kapazitaet">@garage.Kapazitaet</span>
-                        <button class="btn-bearbeiten" @onclick="() => BearbeitenOeffnen(garage)">✏</button>
+                        @if (istAdmin)
+                        {
+                            <button class="btn-bearbeiten" @onclick="() => BearbeitenOeffnen(garage)">✏</button>
+                        }
                     </div>
                 </div>
 
@@ -120,7 +133,7 @@ else
         }
     </div>
 
-    @if (bearbeitenGarage != null)
+    @if (istAdmin && bearbeitenGarage != null)
     {
         <div class="modal-overlay" @onclick="BearbeitenSchliessen">
             <div class="modal-inhalt" @onclick:stopPropagation>
@@ -160,7 +173,7 @@ else
         </div>
     }
 
-    @if (neueGarageOffen)
+    @if (istAdmin && neueGarageOffen)
     {
         <div class="modal-overlay" @onclick="NeueGarageSchliessen">
             <div class="modal-inhalt" @onclick:stopPropagation>
@@ -183,6 +196,7 @@ else
 
 @code {
     private bool istGeladen = false;
+    private bool istAdmin = false;
     private string suchBegriff = "";
     private Garage? bearbeitenGarage = null;
     private string editGarageName = "";
@@ -193,6 +207,9 @@ else
 
     protected override async Task OnInitializedAsync()
     {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        istAdmin = authState.User.IsInRole("Admin");
+
         await GarageService.LadeAlleGaragen();
         istGeladen = true;
     }
@@ -219,7 +236,6 @@ else
         if (bearbeitenGarage != null)
         {
             await GarageService.GarageUmbenennen(bearbeitenGarage, editGarageName);
-            // Alle geänderten Fahrzeugnamen speichern
             foreach (var fahrzeug in bearbeitenGarage.Fahrzeuge)
             {
                 await GarageService.FahrzeugAktualisieren(fahrzeug);
