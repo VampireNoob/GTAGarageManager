@@ -1,0 +1,21 @@
+﻿@page "/login"
+@attribute [Microsoft.AspNetCore.Authorization.AllowAnonymous]
+
+<PageTitle>Login</PageTitle>
+
+<div style="max-width: 400px; margin: 100px auto; text-align: center;">
+    <h3>🔒 Zugang geschützt</h3>
+    <form method="post" action="/login-handler">
+        <input type="password" name="passwort" placeholder="Passwort" style="width:100%; padding:8px; margin:10px 0;" />
+        <button type="submit" style="width:100%; padding:8px;">Einloggen</button>
+        @if (HttpContext != null && HttpContext.Request.Query.ContainsKey("fehler"))
+        {
+            <p style="color:red;">Falsches Passwort</p>
+        }
+    </form>
+</div>
+
+@code {
+    [CascadingParameter]
+    private HttpContext? HttpContext { get; set; }
+}

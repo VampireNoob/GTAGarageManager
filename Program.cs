@@ -1,4 +1,6 @@
 using GTAGarageManager.Components;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
 
 namespace GTAGarageManager
 {
@@ -11,8 +13,19 @@ namespace GTAGarageManager
             // Add services to the container.
             builder.Services.AddRazorComponents()
                 .AddInteractiveServerComponents();
-
             builder.Services.AddScoped<GTAGarageManager.Services.GarageService>();
+            builder.Services.AddHttpContextAccessor();
+
+            // NEU: Cookie-basierte Authentifizierung
+            builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+                .AddCookie(options =>
+                {
+                    options.LoginPath = "/login";
+                    options.AccessDeniedPath = "/login";
+                });
+            builder.Services.AddAuthorization();
+            builder.Services.AddCascadingAuthenticationState();
+
             builder.Services.AddSingleton<Supabase.Client>(_ =>
             {
                 var url = builder.Configuration["Supabase:Url"] ?? "";
@@ -31,15 +44,39 @@ namespace GTAGarageManager
             if (!app.Environment.IsDevelopment())
             {
                 app.UseExceptionHandler("/Error");
-                // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
                 app.UseHsts();
             }
-
             app.UseHttpsRedirection();
-
             app.UseStaticFiles();
-            app.UseAntiforgery();
 
+            // NEU: Auth-Middleware aktivieren
+            app.UseAuthentication();
+            app.UseAuthorization();
+
+            app.UseAntiforgery();
+            app.MapPost("/login-handler", async (HttpContext context, IConfiguration config) =>
+            {
+                var form = await context.Request.ReadFormAsync();
+                var passwort = form["passwort"].ToString();
+                var korrektesPasswort = config["SiteAuth:Password"];
+
+                if (passwort == korrektesPasswort)
+                {
+                    var claims = new List<System.Security.Claims.Claim>
+        {
+            new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.Name, "GaragenUser")
+        };
+                    var identity = new System.Security.Claims.ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+                    var principal = new System.Security.Claims.ClaimsPrincipal(identity);
+
+                    await context.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal,
+                        new AuthenticationProperties { IsPersistent = true, ExpiresUtc = DateTimeOffset.UtcNow.AddDays(30) });
+
+                    return Results.Redirect("/");
+                }
+
+                return Results.Redirect("/login?fehler=1");
+            });
             app.MapRazorComponents<App>()
                 .AddInteractiveServerRenderMode();
 
