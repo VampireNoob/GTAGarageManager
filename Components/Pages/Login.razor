@@ -1,21 +1,95 @@
 ﻿@page "/login"
+@layout Layout.EmptyLayout
 @attribute [Microsoft.AspNetCore.Authorization.AllowAnonymous]
 
 <PageTitle>Login</PageTitle>
 
-<div style="max-width: 400px; margin: 100px auto; text-align: center;">
-    <h3>🔒 Zugang geschützt</h3>
-    <form method="post" action="/login-handler">
-        <input type="password" name="passwort" placeholder="Passwort" style="width:100%; padding:8px; margin:10px 0;" />
-        <button type="submit" style="width:100%; padding:8px;">Einloggen</button>
-        @if (HttpContext != null && HttpContext.Request.Query.ContainsKey("fehler"))
-        {
-            <p style="color:red;">Falsches Passwort</p>
-        }
-    </form>
+<div class="login-bg">
+    <div class="login-box">
+        <h3>🔒 Zugang geschützt</h3>
+        <form method="post" action="/login-handler">
+            <input type="password" name="passwort" placeholder="Passwort" class="login-input" />
+            <button type="submit" class="login-button">Einloggen</button>
+            @if (HttpContext != null && HttpContext.Request.Query.ContainsKey("fehler"))
+            {
+                <p style="color:#ff3b30;">Falsches Passwort</p>
+            }
+        </form>
+    </div>
 </div>
 
 @code {
     [CascadingParameter]
     private HttpContext? HttpContext { get; set; }
 }
+
+<style>
+    html, body {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+    }
+
+    .login-bg {
+        min-height: 100vh;
+        width: 100%;
+        background: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.7)), url('/images/GTA_LS_Customs.png');
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+        display: flex;
+        align-items: flex-start;
+        justify-content: center;
+        padding-top: 12vh;
+    }
+
+    .login-box {
+        background: rgba(28, 28, 30, 0.85);
+        border: 2px solid #ff9500;
+        border-radius: 12px;
+        padding: 40px 35px;
+        width: 100%;
+        max-width: 360px;
+        text-align: center;
+        box-shadow: 0 8px 30px rgba(0,0,0,0.6);
+    }
+
+    .login-box h3 {
+        color: #ffffff;
+        font-size: 22px;
+        margin-bottom: 24px;
+    }
+
+    .login-input {
+        width: 100%;
+        padding: 12px;
+        margin-bottom: 16px;
+        background-color: #2c2c2e;
+        border: 1px solid #3a3a3c;
+        border-radius: 6px;
+        color: #ffffff;
+        font-size: 15px;
+        box-sizing: border-box;
+        outline: none;
+    }
+
+    .login-input:focus {
+        border-color: #ff9500;
+    }
+
+    .login-button {
+        width: 100%;
+        padding: 12px;
+        background-color: #ff9500;
+        color: #000000;
+        border: none;
+        border-radius: 6px;
+        font-size: 15px;
+        font-weight: bold;
+        cursor: pointer;
+    }
+
+    .login-button:hover {
+        background-color: #cc7700;
+    }
+</style>
