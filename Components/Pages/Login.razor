@@ -1,5 +1,6 @@
 ﻿@page "/login"
 @layout Layout.EmptyLayout
+@rendermode @(new InteractiveServerRenderMode(prerender: true))
 @attribute [Microsoft.AspNetCore.Authorization.AllowAnonymous]
 
 <PageTitle>Login</PageTitle>
@@ -10,7 +11,7 @@
         <form method="post" action="/login-handler">
             <input type="password" name="passwort" placeholder="Passwort" class="login-input" />
             <button type="submit" class="login-button">Einloggen</button>
-            @if (HttpContext != null && HttpContext.Request.Query.ContainsKey("fehler"))
+            @if (zeigFehler)
             {
                 <p style="color:#ff3b30;">Falsches Passwort</p>
             }
@@ -19,8 +20,17 @@
 </div>
 
 @code {
-    [CascadingParameter]
-    private HttpContext? HttpContext { get; set; }
+    [Inject]
+    private NavigationManager Nav { get; set; } = default!;
+
+    private bool zeigFehler = false;
+
+    protected override void OnInitialized()
+    {
+        var uri = new Uri(Nav.Uri);
+        var query = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(uri.Query);
+        zeigFehler = query.ContainsKey("fehler");
+    }
 }
 
 <style>
