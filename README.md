@@ -7,7 +7,7 @@
 
 ## A web app to manage all your GTA Online garages and vehicles.
 
-You can view a live demo here: http://gtagaragemanager.runasp.net/
+You can view a live demo here: https://gtagaragemanager.runasp.net
 
 **Note:** The live demo is password-protected. Use the demo credentials below for read-only access (viewing only, no editing):
 - **Demo Password:** `demo123`
